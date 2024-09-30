@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { Server } from "socket.io";
+import { cors } from "hono/cors";
 
 type User = {
   username: string;
@@ -18,6 +19,7 @@ const messages: Message[] = [];
 const userSockets: { [key: string]: User } = {};
 
 const app = new Hono();
+app.use("*", cors());
 app.get("/", (c) => c.text("Hi :)"));
 app.post("/login", async (c) => {
   const { username, password } = await c.req.json();
@@ -30,8 +32,8 @@ app.post("/login", async (c) => {
 });
 
 app.post("/register", async (c) => {
-  const { username, password, passwordConfirmation } = await c.req.json();
-  if (!username || !password || password !== passwordConfirmation) {
+  const { username, password, confirmPassword } = await c.req.json();
+  if (!username || !password || password !== confirmPassword) {
     return c.json({ message: "Malformed request" }, 400);
   }
 
@@ -49,7 +51,12 @@ const server = serve({
   port: 1234,
 });
 console.log("Serving on http://localhost:1234");
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
